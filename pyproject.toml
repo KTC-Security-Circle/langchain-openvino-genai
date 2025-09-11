@@ -1,0 +1,34 @@
+[project]
+name = "langchain-openvino-genai"
+version = "0.0.1"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "snow7y", email = "103980824+snow7y@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "huggingface-hub>=0.34.4",
+    "langchain-core>=0.3.76",
+    "openvino-genai>=2025.3.0.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.15,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    {include-group = "lint"},
+    {include-group = "test"}
+]
+lint = [
+    "pyright>=1.1.405",
+    "ruff>=0.13.0",
+]
+test = [
+    "langchain-tests==0.3.21",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.1.0",
+    "pytest-socket>=0.7.0",
+]

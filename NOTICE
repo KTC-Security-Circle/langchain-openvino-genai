@@ -1,0 +1,27 @@
+================================================================================
+  NOTICE file for langchain-openvino-genai
+================================================================================
+
+Copyright (c) [2025] KTC-Security-Circle
+
+This product includes software originating from the openvinotoolkit/openvino_notebooks project,
+which is developed and maintained by Intel Corporation and its contributors.
+The original software is licensed under the Apache License, Version 2.0.
+
+In compliance with the Apache License 2.0, the original copyright notice and license
+information are provided below.
+
+-----
+
+This library incorporates code derived from the following project:
+
+  Original Project: openvinotoolkit/openvino_notebooks
+  Original Repository: https://github.com/openvinotoolkit/openvino_notebooks
+  Original Copyright: Copyright (c) 2018-2025 Intel Corporation and its contributors
+  Original License: Apache License 2.0
+
+The code used from the original project has been modified and/or extracted for use
+in this library.
+
+This entire work is licensed under the Apache License, Version 2.0. You may obtain
+a copy of the license in the "LICENSE" file included in this repository.

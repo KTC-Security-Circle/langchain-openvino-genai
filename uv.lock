@@ -296,7 +296,7 @@ wheels = [
 
 [[package]]
 name = "langchain-openvino-genai"
-version = "0.0.1.dev1"
+version = "0.0.2.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "huggingface-hub" },

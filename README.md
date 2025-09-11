@@ -69,6 +69,8 @@ uv run scripts/run_llm_model.py
 uv run scripts/run_chat_model.py
 # chat ストリーミング例
 uv run scripts/run_stream_chat.py
+# 構造化出力例
+uv run scripts/run_structured_output.py
 ```
 
 ## ライセンス

@@ -296,12 +296,13 @@ wheels = [
 
 [[package]]
 name = "langchain-openvino-genai"
-version = "0.1.0"
+version = "0.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "huggingface-hub" },
     { name = "langchain-core" },
     { name = "openvino-genai" },
+    { name = "pydantic" },
 ]
 
 [package.dev-dependencies]
@@ -329,6 +330,7 @@ requires-dist = [
     { name = "huggingface-hub", specifier = ">=0.34.4" },
     { name = "langchain-core", specifier = ">=0.3.76" },
     { name = "openvino-genai", specifier = ">=2025.3.0.0" },
+    { name = "pydantic", specifier = ">=2.11.7" },
 ]
 
 [package.metadata.requires-dev]

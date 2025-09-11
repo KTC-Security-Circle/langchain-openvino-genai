@@ -11,6 +11,7 @@ dependencies = [
     "huggingface-hub>=0.34.4",
     "langchain-core>=0.3.76",
     "openvino-genai>=2025.3.0.0",
+    "pydantic>=2.11.7",
 ]
 
 [build-system]

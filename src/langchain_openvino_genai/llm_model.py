@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, Iterator, List, Optional
 
+import openvino as ov
+import openvino_genai
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
+from langchain_core.language_models import LanguageModelInput
 from langchain_core.language_models.llms import LLM
+from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.outputs import GenerationChunk
+from langchain_core.runnables import Runnable
+from pydantic import BaseModel
 
 from langchain_openvino_genai.genai_helper import ChunkStreamer
 
@@ -35,10 +42,10 @@ class OpenVINOLLM(LLM):
 
     """
 
-    ov_pipe: Any = None
-    tokenizer: Any = None
-    config: Any = None
-    streamer: Any = None
+    ov_pipe: openvino_genai.LLMPipeline
+    tokenizer: openvino_genai.Tokenizer
+    config: openvino_genai.GenerationConfig
+    streamer: ChunkStreamer
 
     @classmethod
     def from_model_path(
@@ -49,14 +56,6 @@ class OpenVINOLLM(LLM):
         **kwargs: Any,
     ) -> OpenVINOLLM:
         """Construct the oepnvino object from model_path"""
-        try:
-            import openvino_genai
-
-        except ImportError:
-            raise ImportError(
-                "Could not import OpenVINO GenAI package. "
-                "Please install it with `pip install openvino-genai`."
-            )
 
         ov_pipe = openvino_genai.LLMPipeline(model_path, device, **kwargs)
 
@@ -74,7 +73,7 @@ class OpenVINOLLM(LLM):
 
     def _call(
         self,
-        prompt: str,
+        prompt: str | openvino_genai.TokenizedInputs,
         stop: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
@@ -82,15 +81,6 @@ class OpenVINOLLM(LLM):
         """Call out to OpenVINO's generate request."""
         if stop is not None:
             self.config.stop_strings = set(stop)
-        try:
-            import openvino as ov
-            import openvino_genai
-
-        except ImportError:
-            raise ImportError(
-                "Could not import OpenVINO GenAI package. "
-                "Please install it with `pip install openvino-genai`."
-            )
         if not isinstance(self.tokenizer, openvino_genai.Tokenizer):
             tokens = self.tokenizer(
                 prompt, add_special_tokens=False, return_tensors="np"
@@ -109,7 +99,7 @@ class OpenVINOLLM(LLM):
 
     def _stream(
         self,
-        prompt: str,
+        prompt: str | openvino_genai.TokenizedInputs,
         stop: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
@@ -119,15 +109,6 @@ class OpenVINOLLM(LLM):
 
         if stop is not None:
             self.config.stop_strings = set(stop)
-        try:
-            import openvino as ov
-            import openvino_genai
-
-        except ImportError:
-            raise ImportError(
-                "Could not import OpenVINO GenAI package. "
-                "Please install it with `pip install openvino-genai`."
-            )
         if not isinstance(self.tokenizer, openvino_genai.Tokenizer):
             tokens = self.tokenizer(
                 prompt, add_special_tokens=False, return_tensors="np"
@@ -166,6 +147,43 @@ class OpenVINOLLM(LLM):
     @property
     def _llm_type(self) -> str:
         return "openvino_pipeline"
+
+    def set_structured_output_config(self, schema: dict | type) -> None:
+        """Set the structured output configuration for the model.
+
+        Args:
+            schema: A pydantic BaseModel class or a dict representing the schema.
+        """
+        if schema is None:
+            raise ValueError("Schema must be provided for structured output.")
+        if isinstance(schema, dict):
+            self.config.structured_output_config = (
+                openvino_genai.StructuredOutputConfig(json_schema=schema)
+            )
+        elif issubclass(schema, BaseModel):
+            self.config.structured_output_config = (
+                openvino_genai.StructuredOutputConfig(
+                    json_schema=json.dumps(schema.model_json_schema())
+                )
+            )
+
+    def with_structured_output(
+        self, schema: dict | type, **kwargs: Any
+    ) -> Runnable[LanguageModelInput, dict | BaseModel]:
+        """Return a version of this LLM that produces structured output.
+
+        Args:
+            schema: A pydantic BaseModel class or a dict representing the schema.
+            **kwargs: Additional keyword arguments to pass to the structured output parser.
+
+        Returns:
+            A Runnable that produces structured output conforming to the provided schema.
+        """
+        self.set_structured_output_config(schema)
+        output_parser: JsonOutputParser = JsonOutputParser()
+
+        return self | output_parser
+        # return self
 
 
 DEFAULT_SYSTEM_PROMPT = """You are a helpful, respectful, and honest assistant."""

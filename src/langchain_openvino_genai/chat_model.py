@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Iterator, List, Optional
 
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
+from langchain_core.language_models import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import (
     AIMessage,
@@ -17,6 +18,8 @@ from langchain_core.outputs import (
     ChatResult,
     LLMResult,
 )
+from langchain_core.runnables import Runnable
+from pydantic import BaseModel
 
 from langchain_openvino_genai.llm_model import OpenVINOLLM
 
@@ -169,3 +172,22 @@ class ChatOpenVINO(BaseChatModel):
     @property
     def _llm_type(self) -> str:
         return "openvino-chat-wrapper"
+
+    def with_structured_output(
+        self, schema: dict | type, **kwargs: Any
+    ) -> Runnable[LanguageModelInput, dict | BaseModel]:
+        """Return a version of this LLM that produces structured output.
+
+        Args:
+            schema: A pydantic BaseModel class or a dict representing the schema.
+            **kwargs: Additional keyword arguments to pass to the structured output parser.
+
+        Returns:
+            A Runnable that produces structured output conforming to the provided schema.
+        """
+        self.llm.set_structured_output_config(schema)
+        from langchain_core.output_parsers import JsonOutputParser
+
+        output_parser: JsonOutputParser = JsonOutputParser()
+
+        return self | output_parser

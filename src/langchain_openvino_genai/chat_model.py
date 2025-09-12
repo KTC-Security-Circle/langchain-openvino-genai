@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterator, List, Optional
+from typing import Any, Iterator, List, Optional, Sequence
 
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
 from langchain_core.language_models import LanguageModelInput
@@ -12,6 +12,7 @@ from langchain_core.messages import (
     HumanMessage,
     SystemMessage,
 )
+from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.outputs import (
     ChatGeneration,
     ChatGenerationChunk,
@@ -19,11 +20,17 @@ from langchain_core.outputs import (
     LLMResult,
 )
 from langchain_core.runnables import Runnable
+from langchain_core.tools import BaseTool
 from pydantic import BaseModel
 
 from langchain_openvino_genai.llm_model import OpenVINOLLM
 
 DEFAULT_SYSTEM_PROMPT = """You are a helpful, respectful, and honest assistant."""
+
+TOOL_LLM_SYSTEM_PROMPT = """You can use the following tools to help the user.
+
+Available tools:
+{tools_description}"""
 
 
 class ChatOpenVINO(BaseChatModel):
@@ -74,6 +81,8 @@ class ChatOpenVINO(BaseChatModel):
     """LLM, must be of type OpenVINOLLM"""
     system_message: SystemMessage = SystemMessage(content=DEFAULT_SYSTEM_PROMPT)
     tokenizer: Any = None
+
+    _additional_system_message: SystemMessage | None = None
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
@@ -128,6 +137,9 @@ class ChatOpenVINO(BaseChatModel):
 
         if not isinstance(messages[-1], HumanMessage):
             raise ValueError("Last message must be a HumanMessage!")
+
+        if self._additional_system_message is not None:
+            messages = [self._additional_system_message] + messages
 
         messages_dicts = [self._to_chatml_format(m) for m in messages]
 
@@ -186,8 +198,97 @@ class ChatOpenVINO(BaseChatModel):
             A Runnable that produces structured output conforming to the provided schema.
         """
         self.llm.set_structured_output_config(schema)
-        from langchain_core.output_parsers import JsonOutputParser
 
         output_parser: JsonOutputParser = JsonOutputParser()
+
+        return self | output_parser
+
+    def _split_tool_args_schema(self, tool: BaseTool) -> dict:
+        """Split tool properties into required and optional."""
+        args_schema = tool.args_schema.model_json_schema()
+        properties = {
+            arg_name: {"type": arg_type.pop("type")}
+            for arg_name, arg_type in args_schema.get("properties", {}).items()
+        }
+        required = args_schema.get("required", [])
+        return {"properties": properties, "required": required}
+
+    def _tool_signature(self, tool: BaseTool) -> str:
+        """Return a signature string like tool_name(arg: Type, ...)."""
+        try:
+            fields = tool.args_schema.model_fields
+        except AttributeError:
+            fields = {}
+        parts: list[str] = []
+        for name, field in fields.items():
+            try:
+                ann = field.annotation
+            except AttributeError:
+                ann = None
+            if ann is None:
+                type_name = "Any"
+            else:
+                try:
+                    type_name = ann.__name__
+                except AttributeError:
+                    type_name = str(ann)
+                type_name = type_name.replace("typing.", "")
+            parts.append(f"{name}: {type_name}")
+        args_part = ", ".join(parts)
+        return f"{tool.name}({args_part})" if args_part else f"{tool.name}()"
+
+    def generate_tools_system_prompt(self, tools: Sequence[BaseTool]) -> SystemMessage:
+        """Generate a system prompt enumerating tools.
+
+        Format per line:
+            - tool_name(arg: Type, ...): description
+
+        Returns a `SystemMessage` ready to prepend to conversation.
+        """
+        lines: list[str] = []
+        for t in tools:
+            sig = self._tool_signature(t)
+            desc = (t.description or "").strip().replace("\n", " ")
+            lines.append(f"- {sig}: {desc}")
+        tools_block = "\n".join(lines) if lines else "(no tools available)"
+        content = TOOL_LLM_SYSTEM_PROMPT.format(tools_description=tools_block)
+        return SystemMessage(content=content)
+
+    def bind_tools(
+        self,
+        tools: Sequence[BaseTool],
+        *,
+        tool_choice: str | None = None,
+        **kwargs: Any,
+    ) -> Runnable[LanguageModelInput, BaseMessage]:
+        """Bind tools to the chat model.
+
+        Args:
+            tools: A sequence of tools to bind to the model.
+            tool_choice: Optional tool choice strategy.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            A Runnable that uses the chat model with the bound tools.
+        """
+        schema = {
+            "type": "object",
+            "properties": {
+                "tool_name": {
+                    "type": "string",
+                    "enum": [tool.name for tool in tools],
+                },
+                "arguments": {
+                    "type": "object",
+                    "oneOf": [self._split_tool_args_schema(tool) for tool in tools],
+                },
+            },
+            "required": ["tool_name", "arguments"],
+        }
+        self.llm.set_structured_output_config(schema)
+        self._additional_system_message = self.generate_tools_system_prompt(tools)
+
+        output_parser: JsonOutputParser = JsonOutputParser()
+
 
         return self | output_parser

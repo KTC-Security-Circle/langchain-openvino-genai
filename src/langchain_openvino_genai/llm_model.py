@@ -158,7 +158,7 @@ class OpenVINOLLM(LLM):
             raise ValueError("Schema must be provided for structured output.")
         if isinstance(schema, dict):
             self.config.structured_output_config = (
-                openvino_genai.StructuredOutputConfig(json_schema=schema)
+                openvino_genai.StructuredOutputConfig(json_schema=json.dumps(schema))
             )
         elif issubclass(schema, BaseModel):
             self.config.structured_output_config = (

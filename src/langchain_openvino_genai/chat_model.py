@@ -24,6 +24,7 @@ from langchain_core.tools import BaseTool
 from pydantic import BaseModel
 
 from langchain_openvino_genai.llm_model import OpenVINOLLM
+from langchain_openvino_genai.output_parsers import ToolCallParser
 
 DEFAULT_SYSTEM_PROMPT = """You are a helpful, respectful, and honest assistant."""
 
@@ -288,7 +289,6 @@ class ChatOpenVINO(BaseChatModel):
         self.llm.set_structured_output_config(schema)
         self._additional_system_message = self.generate_tools_system_prompt(tools)
 
-        output_parser: JsonOutputParser = JsonOutputParser()
-
+        output_parser: ToolCallParser = ToolCallParser()
 
         return self | output_parser

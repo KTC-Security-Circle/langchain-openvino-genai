@@ -19,5 +19,5 @@ messages = [
     ("human", "I love programming."),
 ]
 
-# print(chat_model.invoke(messages))
+# print(chat_model.invoke(messages)) # noqa: T201
 chat_model.invoke(messages).pretty_print()

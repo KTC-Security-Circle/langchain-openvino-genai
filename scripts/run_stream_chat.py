@@ -20,4 +20,4 @@ messages = [
 ]
 
 for chunk in chat_model.stream(messages):
-    print(chunk.content, end="", flush=True)
+    print(chunk.content, end="", flush=True) # noqa: T201

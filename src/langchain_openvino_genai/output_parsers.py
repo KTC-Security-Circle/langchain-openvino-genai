@@ -1,7 +1,7 @@
 from uuid import uuid4
 
-from langchain_core.output_parsers import BaseOutputParser, JsonOutputParser
 from langchain_core.messages import AIMessage
+from langchain_core.output_parsers import BaseOutputParser, JsonOutputParser
 
 
 class ToolCallParser(BaseOutputParser):
@@ -11,17 +11,16 @@ class ToolCallParser(BaseOutputParser):
             parsed = JsonOutputParser().parse(text)
             if isinstance(parsed, dict) and "tool_name" in parsed and "arguments" in parsed:
                 return AIMessage(
-                    content="", 
+                    content="",
                     tool_calls=[
                         {
                             "id": str(uuid4()),
                             "name": parsed["tool_name"],
                             "args": parsed["arguments"],
-                            "type": "tool_call"
+                            "type": "tool_call",
                         }
-                    ]
+                    ],
                 )
-            else:
-                raise ValueError("Parsed output does not contain required keys 'tool' and 'args'.")
+            raise ValueError("Parsed output does not contain required keys 'tool' and 'args'.")
         except Exception as e:
             raise ValueError(f"Failed to parse output: {e}")

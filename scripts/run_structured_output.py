@@ -29,5 +29,5 @@ messages = [
     ("human", "I love programming."),
 ]
 
-print(structured_chat_model.invoke(messages))
+print(structured_chat_model.invoke(messages))  # noqa: T201
 # structured_chat_model.invoke(messages).pretty_print()

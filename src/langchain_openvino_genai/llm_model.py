@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Iterator, List, Optional
+from collections.abc import Iterator
+from typing import Any, Dict, List, Optional
 
 import openvino as ov
 import openvino_genai
@@ -33,6 +34,7 @@ class OpenVINOLLM(LLM):
         .. code-block:: python
 
             import openvino_genai
+
             pipe = openvino_genai.LLMPipeline("./openvino_model_dir", "CPU")
             config = openvino_genai.GenerationConfig()
             ov = OpenVINOLLM.from_model_path(
@@ -56,7 +58,6 @@ class OpenVINOLLM(LLM):
         **kwargs: Any,
     ) -> OpenVINOLLM:
         """Construct the oepnvino object from model_path"""
-
         ov_pipe = openvino_genai.LLMPipeline(model_path, device, **kwargs)
 
         config = ov_pipe.get_generation_config()
@@ -74,34 +75,28 @@ class OpenVINOLLM(LLM):
     def _call(
         self,
         prompt: str | openvino_genai.TokenizedInputs,
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> str:
         """Call out to OpenVINO's generate request."""
         if stop is not None:
             self.config.stop_strings = set(stop)
         if not isinstance(self.tokenizer, openvino_genai.Tokenizer):
-            tokens = self.tokenizer(
-                prompt, add_special_tokens=False, return_tensors="np"
-            )
+            tokens = self.tokenizer(prompt, add_special_tokens=False, return_tensors="np")
             input_ids = tokens["input_ids"]
             attention_mask = tokens["attention_mask"]
-            prompt = openvino_genai.TokenizedInputs(
-                ov.Tensor(input_ids), ov.Tensor(attention_mask)
-            )
+            prompt = openvino_genai.TokenizedInputs(ov.Tensor(input_ids), ov.Tensor(attention_mask))
         output = self.ov_pipe.generate(prompt, self.config, **kwargs)
         if not isinstance(self.tokenizer, openvino_genai.Tokenizer):
-            output = self.tokenizer.batch_decode(
-                output.tokens, skip_special_tokens=True
-            )[0]
+            output = self.tokenizer.batch_decode(output.tokens, skip_special_tokens=True)[0]
         return output
 
     def _stream(
         self,
         prompt: str | openvino_genai.TokenizedInputs,
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> Iterator[GenerationChunk]:
         """Output OpenVINO's generation Stream"""
@@ -110,20 +105,14 @@ class OpenVINOLLM(LLM):
         if stop is not None:
             self.config.stop_strings = set(stop)
         if not isinstance(self.tokenizer, openvino_genai.Tokenizer):
-            tokens = self.tokenizer(
-                prompt, add_special_tokens=False, return_tensors="np"
-            )
+            tokens = self.tokenizer(prompt, add_special_tokens=False, return_tensors="np")
             input_ids = tokens["input_ids"]
             attention_mask = tokens["attention_mask"]
-            prompt = openvino_genai.TokenizedInputs(
-                ov.Tensor(input_ids), ov.Tensor(attention_mask)
-            )
+            prompt = openvino_genai.TokenizedInputs(ov.Tensor(input_ids), ov.Tensor(attention_mask))
         stream_complete = Event()
 
         def generate_and_signal_complete() -> None:
-            """
-            genration function for single thread
-            """
+            """Genration function for single thread"""
             self.streamer.reset()
             self.ov_pipe.generate(prompt, self.config, self.streamer, **kwargs)
             stream_complete.set()
@@ -140,7 +129,7 @@ class OpenVINOLLM(LLM):
             yield chunk
 
     @property
-    def _identifying_params(self) -> Dict[str, Any]:
+    def _identifying_params(self) -> dict[str, Any]:
         """Return a dictionary of identifying parameters."""
         return {}
 
@@ -157,14 +146,10 @@ class OpenVINOLLM(LLM):
         if schema is None:
             raise ValueError("Schema must be provided for structured output.")
         if isinstance(schema, dict):
-            self.config.structured_output_config = (
-                openvino_genai.StructuredOutputConfig(json_schema=json.dumps(schema))
-            )
+            self.config.structured_output_config = openvino_genai.StructuredOutputConfig(json_schema=json.dumps(schema))
         elif issubclass(schema, BaseModel):
-            self.config.structured_output_config = (
-                openvino_genai.StructuredOutputConfig(
-                    json_schema=json.dumps(schema.model_json_schema())
-                )
+            self.config.structured_output_config = openvino_genai.StructuredOutputConfig(
+                json_schema=json.dumps(schema.model_json_schema())
             )
 
     def with_structured_output(

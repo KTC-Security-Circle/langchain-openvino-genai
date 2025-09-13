@@ -7,7 +7,10 @@ from huggingface_hub import snapshot_download
 LOCAL_DIR = Path.cwd() / "llms"
 LOCAL_DIR.mkdir(parents=True, exist_ok=True)
 
-def load_model(repo_id: str, revision: str = "main", download_path: str | Path = LOCAL_DIR, cache_dir: str | None = None) -> str:
+
+def load_model(
+    repo_id: str, revision: str = "main", download_path: str | Path = LOCAL_DIR, cache_dir: str | None = None
+) -> str:
     """Download the model from Hugging Face Hub and return the local path.
 
     Args:

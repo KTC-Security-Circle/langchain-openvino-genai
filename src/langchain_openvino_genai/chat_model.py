@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Iterator, List, Optional, Sequence
+from typing import TYPE_CHECKING, Any, TypeGuard
 
-from langchain_core.callbacks.manager import CallbackManagerForLLMRun
-from langchain_core.language_models import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import (
     AIMessage,
@@ -19,12 +17,19 @@ from langchain_core.outputs import (
     ChatResult,
     LLMResult,
 )
-from langchain_core.runnables import Runnable
-from langchain_core.tools import BaseTool
 from pydantic import BaseModel
 
-from langchain_openvino_genai.llm_model import OpenVINOLLM
 from langchain_openvino_genai.output_parsers import ToolCallParser
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
+
+    from langchain_core.callbacks.manager import CallbackManagerForLLMRun
+    from langchain_core.language_models import LanguageModelInput
+    from langchain_core.runnables import Runnable
+    from langchain_core.tools import BaseTool
+
+    from langchain_openvino_genai.llm_model import OpenVINOLLM
 
 DEFAULT_SYSTEM_PROMPT = """You are a helpful, respectful, and honest assistant."""
 
@@ -32,6 +37,10 @@ TOOL_LLM_SYSTEM_PROMPT = """You can use the following tools to help the user.
 
 Available tools:
 {tools_description}"""
+
+
+def is_args_schema_model(val: object) -> TypeGuard[type[BaseModel]]:
+    return isinstance(val, type) and issubclass(val, BaseModel)
 
 
 class ChatOpenVINO(BaseChatModel):
@@ -46,6 +55,7 @@ class ChatOpenVINO(BaseChatModel):
         .. code-block:: python
 
             from langchain_community.llms import OpenVINOLLM
+
             llm = OpenVINOPipeline.from_model_path(
                 model_path="./openvino_model_dir",
                 device="CPU",
@@ -85,7 +95,7 @@ class ChatOpenVINO(BaseChatModel):
 
     _additional_system_message: SystemMessage | None = None
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None: # noqa: ANN401
         super().__init__(**kwargs)
 
         if self.tokenizer is None:
@@ -93,27 +103,25 @@ class ChatOpenVINO(BaseChatModel):
 
     def _generate(
         self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[CallbackManagerForLLMRun] = None,
-        **kwargs: Any,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: object,
     ) -> ChatResult:
         llm_input = self._to_chat_prompt(messages)
-        llm_result = self.llm._generate(
-            prompts=[llm_input], stop=stop, run_manager=run_manager, **kwargs
-        )
+        llm_result = self.llm._generate(prompts=[llm_input], stop=stop, run_manager=run_manager, **kwargs) # noqa: SLF001
         return self._to_chat_result(llm_result)
 
     def _stream(
         self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[CallbackManagerForLLMRun] = None,
-        **kwargs: Any,
+        messages: list[BaseMessage],
+        _stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: object,
     ) -> Iterator[ChatGenerationChunk]:
         request = self._to_chat_prompt(messages)
 
-        for data in self.llm.stream(request, **kwargs):
+        for data in self.llm.stream(request, None, stop=None, **kwargs):
             delta = data
             chunk = ChatGenerationChunk(message=AIMessageChunk(content=delta))
             if run_manager:
@@ -122,41 +130,36 @@ class ChatOpenVINO(BaseChatModel):
 
     def _to_chat_prompt(
         self,
-        messages: List[BaseMessage],
+        messages: list[BaseMessage],
     ) -> str:
         """Convert a list of messages into a prompt format expected by wrapped LLM."""
         try:
             import openvino_genai
 
         except ImportError:
-            raise ImportError(
-                "Could not import OpenVINO GenAI package. "
-                "Please install it with `pip install openvino-genai`."
-            )
+            msg = "Could not import OpenVINO GenAI package. Please install it with `pip install openvino-genai`."
+            raise ImportError(msg) from None
         if not messages:
-            raise ValueError("At least one HumanMessage must be provided!")
+            msg = "At least one HumanMessage must be provided!"
+            raise ValueError(msg)
 
         if not isinstance(messages[-1], HumanMessage):
-            raise ValueError("Last message must be a HumanMessage!")
+            msg = "Last message must be a HumanMessage!"
+            raise TypeError(msg)
 
         if self._additional_system_message is not None:
-            messages = [self._additional_system_message] + messages
+            messages = [self._additional_system_message, *messages]
 
         messages_dicts = [self._to_chatml_format(m) for m in messages]
 
         return (
-            self.tokenizer.apply_chat_template(
-                messages_dicts, add_generation_prompt=True
-            )
+            self.tokenizer.apply_chat_template(messages_dicts, add_generation_prompt=True)
             if isinstance(self.tokenizer, openvino_genai.Tokenizer)
-            else self.tokenizer.apply_chat_template(
-                messages_dicts, tokenize=False, add_generation_prompt=True
-            )
+            else self.tokenizer.apply_chat_template(messages_dicts, tokenize=False, add_generation_prompt=True)
         )
 
     def _to_chatml_format(self, message: BaseMessage) -> dict:
         """Convert LangChain message to ChatML format."""
-
         if isinstance(message, SystemMessage):
             role = "system"
         elif isinstance(message, AIMessage):
@@ -164,7 +167,8 @@ class ChatOpenVINO(BaseChatModel):
         elif isinstance(message, HumanMessage):
             role = "user"
         else:
-            raise ValueError(f"Unknown message type: {type(message)}")
+            msg = f"Unknown message type: {type(message)}"
+            raise TypeError(msg)
 
         return {"role": role, "content": message.content}
 
@@ -173,21 +177,17 @@ class ChatOpenVINO(BaseChatModel):
         chat_generations = []
 
         for g in llm_result.generations[0]:
-            chat_generation = ChatGeneration(
-                message=AIMessage(content=g.text), generation_info=g.generation_info
-            )
+            chat_generation = ChatGeneration(message=AIMessage(content=g.text), generation_info=g.generation_info)
             chat_generations.append(chat_generation)
 
-        return ChatResult(
-            generations=chat_generations, llm_output=llm_result.llm_output
-        )
+        return ChatResult(generations=chat_generations, llm_output=llm_result.llm_output)
 
     @property
     def _llm_type(self) -> str:
         return "openvino-chat-wrapper"
 
     def with_structured_output(
-        self, schema: dict | type, **kwargs: Any
+        self, schema: dict | type, **_kwargs: object
     ) -> Runnable[LanguageModelInput, dict | BaseModel]:
         """Return a version of this LLM that produces structured output.
 
@@ -206,20 +206,19 @@ class ChatOpenVINO(BaseChatModel):
 
     def _split_tool_args_schema(self, tool: BaseTool) -> dict:
         """Split tool properties into required and optional."""
+        if not is_args_schema_model(tool.args_schema):
+            msg = f"Tool {tool.name} args_schema must be a pydantic BaseModel class."
+            raise ValueError(msg)
         args_schema = tool.args_schema.model_json_schema()
         properties = {
-            arg_name: {"type": arg_type.pop("type")}
-            for arg_name, arg_type in args_schema.get("properties", {}).items()
+            arg_name: {"type": arg_type.pop("type")} for arg_name, arg_type in args_schema.get("properties", {}).items()
         }
         required = args_schema.get("required", [])
         return {"properties": properties, "required": required}
 
     def _tool_signature(self, tool: BaseTool) -> str:
         """Return a signature string like tool_name(arg: Type, ...)."""
-        try:
-            fields = tool.args_schema.model_fields
-        except AttributeError:
-            fields = {}
+        fields = tool.args_schema.model_fields if is_args_schema_model(tool.args_schema) else {}
         parts: list[str] = []
         for name, field in fields.items():
             try:
@@ -259,8 +258,8 @@ class ChatOpenVINO(BaseChatModel):
         self,
         tools: Sequence[BaseTool],
         *,
-        tool_choice: str | None = None,
-        **kwargs: Any,
+        _tool_choice: str | None = None,
+        **_kwargs: object,
     ) -> Runnable[LanguageModelInput, BaseMessage]:
         """Bind tools to the chat model.
 

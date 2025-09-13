@@ -33,3 +33,73 @@ test = [
     "pytest-asyncio>=1.1.0",
     "pytest-socket>=0.7.0",
 ]
+
+
+# (https://zenn.dev/mutex_inc/articles/4183b992ccd701)
+[tool.ruff]
+line-length = 120
+exclude = [
+    "src/models/migrations/versions/",
+]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D1",    # undocumented
+    "D203",  # one blank line before class
+    "D213",  # multi-line summary second line
+    "D400",
+    "D415",
+    "TD001", # invalid todo tag
+    "TD002", # missing todo author
+    "TD003", # missing todo link
+    "PD011", # pandas use of dot values
+    "ERA001",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "RUF022",
+    "RUF100",
+    "COM812",
+    "DTZ005",
+    "BLE001",
+    "PLC0415",
+]
+unfixable = [
+    "F401", # unused import
+    "F841", # unused variable
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "D",
+    "S101",
+    "N802",
+    "ARG",
+    "SLF001",
+]
+
+# logger-objects = ["src.library.logger.LOGGER"]
+
+[tool.ruff.lint.pylint]
+max-args = 6
+
+
+[tool.pyright]
+include = ["src"]
+exclude = ["**/node_modules",
+    "**/__pycache__",
+    "src/experimental",
+    "src/typestubs",
+    "src/models/migrations/versions"
+]
+typeCheckingMode = "basic"
+venvPath = "."
+venv = ".venv"

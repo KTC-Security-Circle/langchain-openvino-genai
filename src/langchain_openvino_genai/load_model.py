@@ -25,10 +25,9 @@ def load_model(
     model_name = repo_id.split("/")[-1]
     model_dir = Path(download_path) / model_name
     model_dir.mkdir(parents=True, exist_ok=True)
-    local_path = snapshot_download(
+    return snapshot_download(
         repo_id=repo_id,
         local_dir=model_dir,
         revision=revision,
         cache_dir=cache_dir,
     )
-    return local_path

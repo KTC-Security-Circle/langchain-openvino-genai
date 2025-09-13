@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import openvino as ov
 import openvino_genai
-from langchain_core.callbacks.manager import CallbackManagerForLLMRun
-from langchain_core.language_models import LanguageModelInput
 from langchain_core.language_models.llms import LLM
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.outputs import GenerationChunk
-from langchain_core.runnables import Runnable
 from pydantic import BaseModel
 
 from langchain_openvino_genai.genai_helper import ChunkStreamer
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from langchain_core.callbacks.manager import CallbackManagerForLLMRun
+    from langchain_core.language_models import LanguageModelInput
+    from langchain_core.runnables import Runnable
 
 
 class OpenVINOLLM(LLM):
@@ -54,11 +57,11 @@ class OpenVINOLLM(LLM):
         cls,
         model_path: str,
         device: str = "CPU",
-        tokenizer: Any = None,
-        **kwargs: Any,
+        tokenizer: openvino_genai.Tokenizer | None = None,
+        **kwargs: object,
     ) -> OpenVINOLLM:
         """Construct the oepnvino object from model_path"""
-        ov_pipe = openvino_genai.LLMPipeline(model_path, device, **kwargs)
+        ov_pipe = openvino_genai.LLMPipeline(model_path, device, {}, **kwargs)
 
         config = ov_pipe.get_generation_config()
         if tokenizer is None:
@@ -76,8 +79,8 @@ class OpenVINOLLM(LLM):
         self,
         prompt: str | openvino_genai.TokenizedInputs,
         stop: list[str] | None = None,
-        run_manager: CallbackManagerForLLMRun | None = None,
-        **kwargs: Any,
+        _run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: object,
     ) -> str:
         """Call out to OpenVINO's generate request."""
         if stop is not None:
@@ -97,7 +100,7 @@ class OpenVINOLLM(LLM):
         prompt: str | openvino_genai.TokenizedInputs,
         stop: list[str] | None = None,
         run_manager: CallbackManagerForLLMRun | None = None,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> Iterator[GenerationChunk]:
         """Output OpenVINO's generation Stream"""
         from threading import Event, Thread
@@ -144,7 +147,8 @@ class OpenVINOLLM(LLM):
             schema: A pydantic BaseModel class or a dict representing the schema.
         """
         if schema is None:
-            raise ValueError("Schema must be provided for structured output.")
+            msg = "Schema must be provided for structured output."
+            raise ValueError(msg)
         if isinstance(schema, dict):
             self.config.structured_output_config = openvino_genai.StructuredOutputConfig(json_schema=json.dumps(schema))
         elif issubclass(schema, BaseModel):
@@ -153,7 +157,7 @@ class OpenVINOLLM(LLM):
             )
 
     def with_structured_output(
-        self, schema: dict | type, **kwargs: Any
+        self, schema: dict | type, **_kwargs: object
     ) -> Runnable[LanguageModelInput, dict | BaseModel]:
         """Return a version of this LLM that produces structured output.
 

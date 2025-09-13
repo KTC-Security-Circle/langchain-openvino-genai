@@ -21,6 +21,9 @@ class ToolCallParser(BaseOutputParser):
                         }
                     ],
                 )
-            raise ValueError("Parsed output does not contain required keys 'tool' and 'args'.")
         except Exception as e:
-            raise ValueError(f"Failed to parse output: {e}")
+            msg = f"Failed to parse output: {e}"
+            raise ValueError(msg) from e
+        else:
+            msg = "Output does not contain a valid tool call."
+            raise ValueError(msg)

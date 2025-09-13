@@ -15,7 +15,7 @@ class IterableStreamer(ov_genai.StreamerBase):
         print_len (int): The length of the printed text to manage incremental decoding.
     """
 
-    def __init__(self, tokenizer):
+    def __init__(self, tokenizer: ov_genai.Tokenizer) -> None:
         """Initializes the IterableStreamer with the given tokenizer.
 
         Args:
@@ -24,16 +24,16 @@ class IterableStreamer(ov_genai.StreamerBase):
         super().__init__()
         self.tokenizer = tokenizer
         self.tokens_cache = []
-        self.text_queue = queue.Queue()
+        self.text_queue: queue.Queue[str | None] = queue.Queue()
         self.print_len = 0
         self.decoded_lengths = []
         self._stop_flag = False
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Self:
         """Returns the iterator object itself."""
         return self
 
-    def __next__(self):
+    def __next__(self) -> str:
         """Returns the next value from the text queue.
 
         Returns:
@@ -47,7 +47,7 @@ class IterableStreamer(ov_genai.StreamerBase):
             raise StopIteration
         return value
 
-    def get_stop_flag(self):
+    def get_stop_flag(self) -> bool:
         """Checks whether the generation process should be stopped.
 
         Returns:
@@ -55,7 +55,7 @@ class IterableStreamer(ov_genai.StreamerBase):
         """
         return self._stop_flag
 
-    def put_word(self, word: str | None):
+    def put_word(self, word: str | None) -> None:
         """Puts a word into the text queue.
 
         Args:
@@ -103,7 +103,7 @@ class IterableStreamer(ov_genai.StreamerBase):
             return True  # True means stop generation
         return False  # False means continue generation
 
-    def end(self):
+    def end(self) -> None:
         """Flushes residual tokens from the buffer and puts a None value in the queue to signal the end."""
         text = self.tokenizer.decode(self.tokens_cache)
         if len(text) > self.print_len:
@@ -114,7 +114,7 @@ class IterableStreamer(ov_genai.StreamerBase):
         self.put_word(None)
         self._stop_flag = True
 
-    def reset(self):
+    def reset(self) -> None:
         self.tokens_cache = []
         self.text_queue = queue.Queue()
         self.print_len = 0
@@ -123,7 +123,7 @@ class IterableStreamer(ov_genai.StreamerBase):
 
 
 class ChunkStreamer(IterableStreamer):
-    def __init__(self, tokenizer, tokens_len=2):
+    def __init__(self, tokenizer: ov_genai.Tokenizer, tokens_len: int = 2) -> None:
         super().__init__(tokenizer)
         self.tokens_len = tokens_len
 

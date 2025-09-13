@@ -95,7 +95,7 @@ class ChatOpenVINO(BaseChatModel):
 
     _additional_system_message: SystemMessage | None = None
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any) -> None: # noqa: ANN401
         super().__init__(**kwargs)
 
         if self.tokenizer is None:
@@ -109,7 +109,7 @@ class ChatOpenVINO(BaseChatModel):
         **kwargs: object,
     ) -> ChatResult:
         llm_input = self._to_chat_prompt(messages)
-        llm_result = self.llm._generate(prompts=[llm_input], stop=stop, run_manager=run_manager, **kwargs)
+        llm_result = self.llm._generate(prompts=[llm_input], stop=stop, run_manager=run_manager, **kwargs) # noqa: SLF001
         return self._to_chat_result(llm_result)
 
     def _stream(

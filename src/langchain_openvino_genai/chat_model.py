@@ -19,6 +19,7 @@ from langchain_core.outputs import (
 )
 from pydantic import BaseModel
 
+from langchain_openvino_genai.llm_model import OpenVINOLLM  # noqa: TC001 # 実行時にバリデーションで使用されるため
 from langchain_openvino_genai.output_parsers import ToolCallParser
 
 if TYPE_CHECKING:
@@ -29,7 +30,6 @@ if TYPE_CHECKING:
     from langchain_core.runnables import Runnable
     from langchain_core.tools import BaseTool
 
-    from langchain_openvino_genai.llm_model import OpenVINOLLM
 
 DEFAULT_SYSTEM_PROMPT = """You are a helpful, respectful, and honest assistant."""
 

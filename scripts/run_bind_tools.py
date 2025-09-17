@@ -1,9 +1,15 @@
+from langchain_core.messages import (
+    # AIMessage,
+    HumanMessage,
+    SystemMessage,
+    # ToolMessage,
+)
 from langchain_core.tools import tool
 
 from langchain_openvino_genai import ChatOpenVINO, OpenVINOLLM, load_model
 
 model_name = "OpenVINO/Qwen3-8B-int4-cw-ov"
-device = "CPU"
+device = "GPU"
 
 model_path = load_model(repo_id=model_name)
 
@@ -27,11 +33,26 @@ def subtract(a: int, b: int) -> int:
 
 chat_model = ChatOpenVINO(llm=ov_llm, verbose=True)
 messages = [
-    (
-        "system",
-        "You are a helpful assistant that can use tools. Use the add tool to add two numbers.",
-    ),
-    ("human", "What is 5 - 3?"),
+    SystemMessage(content=("You are a helpful assistant that can use tools.")),
+    HumanMessage(content="What is 5 - 3?"),
+    # AIMessage(
+    #     content="",
+    #     additional_kwargs={},
+    #     response_metadata={},
+    #     tool_calls=[
+    #         {
+    #             "name": "subtract",
+    #             "args": {"a": 5, "b": 3},
+    #             "id": "771b44ab-e212-4fcf-9608-7303780f1774",
+    #             "type": "tool_call",
+    #         }
+    #     ],
+    # ),
+    # ToolMessage(
+    #     content="2",
+    #     name="subtract",
+    #     tool_call_id="771b44ab-e212-4fcf-9608-7303780f1774",
+    # ),
 ]
 
 tool_llm = chat_model.bind_tools([add, subtract])

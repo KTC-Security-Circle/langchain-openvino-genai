@@ -9,6 +9,7 @@ from langchain_core.messages import (
     BaseMessage,
     HumanMessage,
     SystemMessage,
+    ToolMessage,
 )
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.outputs import (
@@ -36,7 +37,9 @@ DEFAULT_SYSTEM_PROMPT = """You are a helpful, respectful, and honest assistant."
 TOOL_LLM_SYSTEM_PROMPT = """You can use the following tools to help the user.
 
 Available tools:
-{tools_description}"""
+{tools_description}
+
+When you know the final answer, respond with mode "response" and provide the answer in the response field."""
 
 
 def is_args_schema_model(val: object) -> TypeGuard[type[BaseModel]]:
@@ -95,7 +98,7 @@ class ChatOpenVINO(BaseChatModel):
 
     _additional_system_message: SystemMessage | None = None
 
-    def __init__(self, **kwargs: Any) -> None: # noqa: ANN401
+    def __init__(self, **kwargs: Any) -> None:  # noqa: ANN401
         super().__init__(**kwargs)
 
         if self.tokenizer is None:
@@ -109,7 +112,7 @@ class ChatOpenVINO(BaseChatModel):
         **kwargs: object,
     ) -> ChatResult:
         llm_input = self._to_chat_prompt(messages)
-        llm_result = self.llm._generate(prompts=[llm_input], stop=stop, run_manager=run_manager, **kwargs) # noqa: SLF001
+        llm_result = self.llm._generate(prompts=[llm_input], stop=stop, run_manager=run_manager, **kwargs)  # noqa: SLF001
         return self._to_chat_result(llm_result)
 
     def _stream(
@@ -143,9 +146,9 @@ class ChatOpenVINO(BaseChatModel):
             msg = "At least one HumanMessage must be provided!"
             raise ValueError(msg)
 
-        if not isinstance(messages[-1], HumanMessage):
-            msg = "Last message must be a HumanMessage!"
-            raise TypeError(msg)
+        # if not isinstance(messages[-1], HumanMessage):
+        #     msg = "Last message must be a HumanMessage!"
+        #     raise TypeError(msg)
 
         if self._additional_system_message is not None:
             messages = [self._additional_system_message, *messages]
@@ -166,6 +169,8 @@ class ChatOpenVINO(BaseChatModel):
             role = "assistant"
         elif isinstance(message, HumanMessage):
             role = "user"
+        elif isinstance(message, ToolMessage):
+            role = f"Tool {message.name} result:"
         else:
             msg = f"Unknown message type: {type(message)}"
             raise TypeError(msg)
@@ -274,16 +279,33 @@ class ChatOpenVINO(BaseChatModel):
         schema = {
             "type": "object",
             "properties": {
-                "tool_name": {
+                "mode": {
                     "type": "string",
-                    "enum": [tool.name for tool in tools],
+                    "enum": ["tool_call", "response"]
                 },
-                "arguments": {
+                "tool_call": {
                     "type": "object",
-                    "oneOf": [self._split_tool_args_schema(tool) for tool in tools],
+                    "properties": {
+                        "tool_name": {
+                            "type": "string",
+                            "enum": [tool.name for tool in tools],
+                        },
+                        "arguments": {
+                            "type": "object",
+                            "oneOf": [self._split_tool_args_schema(tool) for tool in tools],
+                        },
+                    },
+                    "description": "If the mode is 'tool_call', this field must be provided.",
+                    "required": ["tool_name", "arguments"],
+                    "additionalProperties": False,
+                },
+                "response": {
+                    "type": "string",
+                    "description": "If the mode is 'response', this field must be provided.",
                 },
             },
-            "required": ["tool_name", "arguments"],
+            "required": ["mode"],
+            "additionalProperties": False
         }
         self.llm.set_structured_output_config(schema)
         self._additional_system_message = self.generate_tools_system_prompt(tools)

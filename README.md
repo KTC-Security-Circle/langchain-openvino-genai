@@ -25,6 +25,8 @@ Windows/Intel NPU を利用する場合は、対応 NPU ドライバのインス
 
 Hugging Face Hub 上のIR変換済みモデル:
 
+[Hugging Face Hub LLMs optimized for NPU](https://huggingface.co/collections/OpenVINO/llms-optimized-for-npu-686e7f0bf7bc184bd71f8ba0)
+
 - [OpenVINO/Qwen3-8B-int4-cw-ov](https://huggingface.co/OpenVINO/Qwen3-8B-int4-cw-ov)
 
 IR変換を行い動作を確認できたモデル:

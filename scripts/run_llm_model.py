@@ -10,4 +10,4 @@ ov_llm = OpenVINOLLM.from_model_path(
     device=device,
 )
 
-print(ov_llm.invoke("Hello, how are you?"))
+print(ov_llm.bind(max_length=30).invoke("Hello, how are you?")) # noqa: T201

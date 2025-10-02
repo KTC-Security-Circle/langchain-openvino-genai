@@ -1,7 +1,7 @@
 [project]
 name = "langchain-openvino-genai"
-version = "0.0.2.dev0"
-description = "Add your description here"
+version = "0.0.3"
+description = "LangChain integration for OpenVINO GenAI"
 readme = "README.md"
 authors = [
     { name = "snow7y", email = "103980824+snow7y@users.noreply.github.com" }

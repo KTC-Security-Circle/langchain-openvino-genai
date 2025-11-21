@@ -99,10 +99,10 @@ class OpenVINOLLM(LLM):
                     {},
                     **kwargs,
                 )
-            except Exception:
+            except Exception as e:
                 if len(devices) == 1:
                     msg = "No suitable device found for OpenVINO GenAI."
-                    raise RuntimeError(msg) from None
+                    raise RuntimeError(msg) from e
                 devices = devices[1:]
                 continue
             return ov_pipe

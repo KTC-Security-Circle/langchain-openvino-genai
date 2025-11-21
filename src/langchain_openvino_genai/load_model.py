@@ -7,7 +7,7 @@ from huggingface_hub import snapshot_download
 LOCAL_DIR = Path.cwd() / "llms"
 
 
-def _make_default_dir(path: Path) -> None:
+def _make_gitignore(path: Path) -> None:
     gitignore_path = path / ".gitignore"
     if not gitignore_path.exists():
         gitignore_path.open("w").write("*\n!.gitignore\n")
@@ -36,7 +36,7 @@ def load_model(
     dp = Path(download_path)
     dp.mkdir(parents=True, exist_ok=True)
     if add_gitignore:
-        _make_default_dir(dp)
+        _make_gitignore(dp)
 
     model_name = repo_id.split("/")[-1]
     model_dir = dp / model_name

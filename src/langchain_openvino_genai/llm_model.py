@@ -63,7 +63,7 @@ class OpenVINOLLM(LLM):
         tokenizer: openvino_genai.Tokenizer | None = None,
         **kwargs: object,
     ) -> OpenVINOLLM:
-        """Construct the oepnvino object from model_path"""
+        """Construct the openvino object from model_path"""
         try:
             ov_pipe = openvino_genai.LLMPipeline(model_path, device, {}, **kwargs)
         except Exception:

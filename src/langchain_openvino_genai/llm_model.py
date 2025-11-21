@@ -87,6 +87,10 @@ class OpenVINOLLM(LLM):
     @classmethod
     def _resolve_load(cls, model_path: str, **kwargs: object) -> openvino_genai.LLMPipeline:
         available_devices = ov.Core().available_devices
+        if not available_devices:
+            msg = "No OpenVINO supported devices found."
+            raise RuntimeError(msg)
+
         devices = [d for d in cls.DEVICE_PRIORITY if d in available_devices]
 
         while True:

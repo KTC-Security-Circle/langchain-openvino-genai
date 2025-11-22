@@ -1,6 +1,6 @@
 [project]
 name = "langchain-openvino-genai"
-version = "0.0.3"
+version = "0.0.4"
 description = "LangChain integration for OpenVINO GenAI"
 readme = "README.md"
 authors = [

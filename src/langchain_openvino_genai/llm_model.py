@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import openvino as ov
 import openvino_genai
@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from langchain_core.callbacks.manager import CallbackManagerForLLMRun
     from langchain_core.language_models import LanguageModelInput
     from langchain_core.runnables import Runnable
+
+type Device = Literal["CPU", "GPU", "NPU"]
 
 
 class OpenVINOLLM(LLM):
@@ -51,17 +53,24 @@ class OpenVINOLLM(LLM):
     tokenizer: openvino_genai.Tokenizer
     config: openvino_genai.GenerationConfig
     streamer: ChunkStreamer
+    DEVICE_PRIORITY: ClassVar[set[Device]] = {"NPU", "GPU", "CPU"}
 
     @classmethod
     def from_model_path(
         cls,
         model_path: str,
-        device: str = "CPU",
+        device: str = "AUTO",
         tokenizer: openvino_genai.Tokenizer | None = None,
         **kwargs: object,
     ) -> OpenVINOLLM:
-        """Construct the oepnvino object from model_path"""
-        ov_pipe = openvino_genai.LLMPipeline(model_path, device, {}, **kwargs)
+        """Construct the openvino object from model_path"""
+        try:
+            ov_pipe = openvino_genai.LLMPipeline(model_path, device, {}, **kwargs)
+        except Exception:
+            if device == "AUTO":
+                ov_pipe = cls._resolve_load(model_path, **kwargs)
+            else:
+                raise
 
         config = ov_pipe.get_generation_config()
         if tokenizer is None:
@@ -74,6 +83,33 @@ class OpenVINOLLM(LLM):
             config=config,
             streamer=streamer,
         )
+
+    @classmethod
+    def _resolve_load(cls, model_path: str, **kwargs: object) -> openvino_genai.LLMPipeline:
+        available_devices = ov.Core().available_devices
+        if not available_devices:
+            msg = "No OpenVINO supported devices found."
+            raise RuntimeError(msg)
+
+        devices = [d for d in cls.DEVICE_PRIORITY if d in available_devices]
+
+        while True:
+            device = f"AUTO:{','.join(devices)}"
+
+            try:
+                ov_pipe = openvino_genai.LLMPipeline(
+                    model_path,
+                    device,
+                    {},
+                    **kwargs,
+                )
+            except Exception as e:
+                if len(devices) == 1:
+                    msg = "No suitable device found for OpenVINO GenAI."
+                    raise RuntimeError(msg) from e
+                devices = devices[1:]
+                continue
+            return ov_pipe
 
     def _call(
         self,

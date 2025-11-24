@@ -118,13 +118,13 @@ class ChatOpenVINO(BaseChatModel):
     def _stream(
         self,
         messages: list[BaseMessage],
-        _stop: list[str] | None = None,
+        stop: list[str] | None = None,
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: object,
     ) -> Iterator[ChatGenerationChunk]:
         request = self._to_chat_prompt(messages)
 
-        for data in self.llm.stream(request, None, stop=None, **kwargs):
+        for data in self.llm.stream(request, None, stop=stop, **kwargs):
             delta = data
             chunk = ChatGenerationChunk(message=AIMessageChunk(content=delta))
             if run_manager:
